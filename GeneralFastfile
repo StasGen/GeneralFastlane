@@ -1,0 +1,20 @@
+fastlane_version "2.59.0"
+
+
+default_platform :ios
+
+
+
+lane :todo do |options|
+  UI.header "SUPR def #{ENV["APPSTROE_SCHEME"]}"
+end
+
+
+def assd
+  UI.header "SUPR def #{ENV["APPSTROE_SCHEME"]}"
+end
+
+
+lane :todoR do |options|
+  UI.header "SUPR def #{ENV["APPSTROE_SCHEME"]}, #{options[:run]} "
+end
