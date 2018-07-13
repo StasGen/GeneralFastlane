@@ -16,5 +16,5 @@ end
 
 
 lane :todoR do |options|
-  UI.header "SUPR def #{ENV["APPSTROE_SCHEME"]}, #{options[:run]} "
+  UI.header "SUPR def #{ENV["APPSTROE_SCHEME"]}, #{options[:run], #{ENV["MAIN_TARGET"]}} "
 end
