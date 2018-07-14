@@ -182,7 +182,7 @@ def build_crashlytics(branch, env, build_number)
     message = "🍷 Prod build is ready to be tested #{get_version}, #{branch} 🥃"
     notes = "Branch: #{branch}\nHash: #{commit_hash}\nUpload time: #{upload_time}\nServer: Prod"
   else
-    "You gave me #{env]} -- I have no idea what to do with that."
+    "You gave me #{env} -- I have no idea what to do with that."
   end
   
   crashlytics_upload(notes)
