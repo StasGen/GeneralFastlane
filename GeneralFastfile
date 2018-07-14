@@ -1,16 +1,6 @@
 fastlane_version "2.59.0"
 
-import "git_extensions"
-
 default_platform :ios
-
-
-
-
-
-
-
-
 
 
 desc "Run unit tests"
