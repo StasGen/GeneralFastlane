@@ -5,11 +5,11 @@ default_platform :ios
 
 desc "Run unit tests"
 lane :execute_test do
-	git_reset_changes
-	clear_derived_data
-	update_pods
+  git_reset_changes
+  clear_derived_data
+  update_pods
   scan
-	slather
+  slather
 end
 
 
@@ -124,9 +124,10 @@ def build_crashlytics(branch, env, build_number)
   set_adhoc_provisioning_profiles
   commit_hash = last_git_commit[:abbreviated_commit_hash]
   message = nil
-	case env
-	when "stage"
-		add_badge(shield: "stage-#{get_version}-orange", no_badge: true)
+  
+  case env
+  when "stage"
+    add_badge(shield: "stage-#{get_version}-orange", no_badge: true)
     gym(
       scheme: "Stage",
       export_method: "ad-hoc",
@@ -146,8 +147,8 @@ def build_crashlytics(branch, env, build_number)
   else
     "You gave me #{options[:env]} -- I have no idea what to do with that."
   end
+  
   crashlytics_upload(notes)
-
   clean_build_artifacts
   git_reset_changes
   post_to_slack(message: message)
@@ -187,7 +188,6 @@ def crashlytics_upload(notes)
     notes: notes, 
     notifications: true
   )
-
   upload_symbols_to_crashlytics
 end
 
@@ -204,10 +204,9 @@ def build_appstore_release
   version_live = version_live_raw.to_i + 1
   version = version_live > version_current ? version_live : version_current
   increment_build_number_in_plist(
-  	build_number: version.to_s,
-  	target: ENV["MAIN_TARGET"]
+    build_number: version.to_s,
+    target: ENV["MAIN_TARGET"]
   )
-
   gym(
     scheme: ENV["APPSTROE_SCHEME"],
     export_method: "app-store",
@@ -221,7 +220,6 @@ def set_appstore_provisioning_profiles
     plist_path: ENV["PLIST_PATH"],
     xcodeproj: ENV["XCODE_PROJ"]
   )
-
   update_provisioning_profile_specifier(
     target: ENV["MAIN_TARGET"],
     new_specifier: ENV["PROVISION_PROFILE_APPSTORE"]
