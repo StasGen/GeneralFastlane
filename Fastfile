@@ -146,6 +146,21 @@ def post_to_slack(options)
 end
 
 
+def git_fetch
+  sh "git fetch"
+end
+
+
+def git_checkout(branch)
+  sh "git checkout #{branch}"
+end
+
+
+def git_reset_changes
+  sh "git reset --hard HEAD"
+end
+
+
 #####################################################
 # Crashlytics Beta deploy
 #####################################################
