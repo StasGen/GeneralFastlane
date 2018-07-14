@@ -108,6 +108,12 @@ def crashlytics_upload(notes)
   upload_symbols_to_crashlytics
 end
 
+def upload_time
+  return Time.now.strftime("%d/%m/%Y %H:%M")
+end
+
+last_slack_progress = "[-----:train:]"
+
 private_lane :post_to_slack do |options|
   progress = options[:progress]
   message = options[:message]
