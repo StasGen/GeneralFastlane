@@ -4,8 +4,26 @@ fastlane_version "2.59.0"
 default_platform :ios
 
 
+
+#####################################################
+# Public lanes
+#####################################################
+
+desc "Download dSYM files from iTC and upload them to Crashlytics"
+desc "you can specify `version`, latest will be used if not provided"
+lane :refresh_dsyms do |options|
+  download_dsyms(version: options[:version] || "latest")
+  upload_symbols_to_crashlytics
+  clean_build_artifacts
+end
+
+
+#####################################################
+# Private lanes
+#####################################################
+
 desc "Run unit tests"
-lane :execute_test do
+private_lane :execute_test do
   git_reset_changes
   clear_derived_data
   update_pods
@@ -15,7 +33,7 @@ end
 
 
 desc "Submit a new Crashlytics (Stage server) build from provided/develop branch with badge"
-lane :execute_stage do |options|
+private_lane :execute_stage do |options|
   branch = options[:branch]
   checkout_if_needed(options[:builder], branch)
 
@@ -24,7 +42,7 @@ end
 
 
 desc "Submit a new Crashlytics (Prod server) from provided/develop branch with badge"
-lane :execute_prod do |options|
+private_lane :execute_prod do |options|
   branch = options[:branch]
   checkout_if_needed(options[:builder], branch)
 
@@ -32,8 +50,8 @@ lane :execute_prod do |options|
 end
 
 
-desc "Submit a new AdHoc Build to Apple TestFlight from develop branch"
-lane :execute_release_appstore do |options|
+desc "Submit a new AdHoc Build to Apple TestFlight from RC branch"
+private_lane :execute_release_appstore do |options|
   ensure_git_status_clean
   branch = "rc"
   post_to_slack(progress:"[:rocket::sparkles::sparkles::sparkles::sparkles:]", message: "Checking out #{branch}")
@@ -54,17 +72,8 @@ lane :execute_release_appstore do |options|
 end
 
 
-desc "Download dSYM files from iTC and upload them to Crashlytics"
-desc "you can specify `version`, latest will be used if not provided"
-lane :execute_refresh_dsyms do |options|
-  download_dsyms(version: options[:version] || "latest")
-  upload_symbols_to_crashlytics
-  clean_build_artifacts
-end
-
-
 desc "Checks if all configs settings exists in *.info plists"
-lane :execute_fullfill_plists_with_configs do
+private_lane :execute_fullfill_plists_with_configs do
   config = Xcodeproj::Config.new(ENV["XCODE_COFIG_PATH"])
   project = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"])
 
@@ -92,24 +101,6 @@ private_lane :execute_enable_firebase_debug_mode do
   end
 end
 
-#####################################################
-# Private lanes
-#####################################################
-
-last_slack_progress = "[-----:train:]"
-
-private_lane :post_to_slack do |options|
-  progress = options[:progress]
-  message = options[:message]
-  success = options[:success]
-  last_slack_progress = progress
-  slack(
-    message: "#{progress} #{message}",
-    slack_url: ENV["SLACK_CHANNEL_URL"],
-    success: success,
-    default_payloads: []
-  )
-end
 
 #####################################################
 # Helpers
@@ -139,6 +130,21 @@ def update_pods
     try_repo_update_on_error: true
   )
 end
+
+
+last_slack_progress = "[-----:train:]"
+
+def post_to_slack(options)
+  progress = options[:progress]
+  last_slack_progress = progress
+  slack(
+    message: "#{progress} #{options[:message]}",
+    slack_url: ENV["SLACK_CHANNEL_URL"],
+    success: options[:success],
+    default_payloads: []
+  )
+end
+
 
 #####################################################
 # Crashlytics Beta deploy
@@ -176,7 +182,7 @@ def build_crashlytics(branch, env, build_number)
     message = "🍷 Prod build is ready to be tested #{get_version}, #{branch} 🥃"
     notes = "Branch: #{branch}\nHash: #{commit_hash}\nUpload time: #{upload_time}\nServer: Prod"
   else
-    "You gave me #{options[:env]} -- I have no idea what to do with that."
+    "You gave me #{env]} -- I have no idea what to do with that."
   end
   
   crashlytics_upload(notes)
@@ -222,6 +228,7 @@ def crashlytics_upload(notes)
   upload_symbols_to_crashlytics
 end
 
+
 #####################################################
 # Appstore deploy
 #####################################################
@@ -256,6 +263,7 @@ def set_appstore_provisioning_profiles
     new_specifier: ENV["PROVISION_PROFILE_APPSTORE"]
   )
 end
+
 
 #####################################################
 # Error exception
