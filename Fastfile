@@ -1,5 +1,6 @@
-fastlane_version "2.59.0"
+#!/usr/bin/ruby
 
+fastlane_version "2.59.0"
 default_platform :ios
 
 
@@ -59,6 +60,37 @@ lane :execute_refresh_dsyms do |options|
   download_dsyms(version: options[:version] || "latest")
   upload_symbols_to_crashlytics
   clean_build_artifacts
+end
+
+
+desc "Checks if all configs settings exists in *.info plists"
+lane :execute_fullfill_plists_with_configs do
+  config = Xcodeproj::Config.new(ENV["XCODE_COFIG_PATH"])
+  project_path = ENV["XCODE_PROJ"]
+  project = Xcodeproj::Project.open(project_path)
+
+  project.targets.each do |target|
+    plist_path = "../#{target.build_configurations[0].build_settings["INFOPLIST_FILE"]}"
+    plist = Xcodeproj::Plist.read_from_path(plist_path)
+    config.attributes.each do |key, value|
+      plist[key] = "${#{key}}"
+    end
+    Xcodeproj::Plist.write_to_path(plist, plist_path)
+  end
+end
+
+
+desc "Passes firebase analytics argument on launchtime"
+private_lane :execute_enable_firebase_debug_mode do
+  project_path = ENV["XCODE_PROJ"]
+  schemes = Xcodeproj::Project.schemes(project_path)
+  
+  schemes.each do |value|
+    path = project_path + "/xcshareddata/xcschemes/" + value + ".xcscheme"
+    sheme = Xcodeproj::XCScheme.new(path)
+    sheme.launch_action.command_line_arguments = Xcodeproj::XCScheme::CommandLineArguments.new([{ :argument => '-FIRAnalyticsDebugEnabled', :enabled => true }])
+    sheme.save!
+  end
 end
 
 #####################################################
