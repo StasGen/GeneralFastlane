@@ -66,7 +66,7 @@ end
 desc "Checks if all configs settings exists in *.info plists"
 lane :execute_fullfill_plists_with_configs do
   config = Xcodeproj::Config.new(ENV["XCODE_COFIG_PATH"])
-  project_path = ENV["XCODE_PROJ"]
+  project_path = ENV["XCODE_PROJ_PATH"]
   project = Xcodeproj::Project.open(project_path)
 
   project.targets.each do |target|
@@ -82,7 +82,7 @@ end
 
 desc "Passes firebase analytics argument on launchtime"
 private_lane :execute_enable_firebase_debug_mode do
-  project_path = ENV["XCODE_PROJ"]
+  project_path = ENV["XCODE_PROJ_PATH"]
   schemes = Xcodeproj::Project.schemes(project_path)
   
   schemes.each do |value|
