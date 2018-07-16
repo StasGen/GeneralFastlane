@@ -110,14 +110,14 @@ private_lane :execute_create_tag do
   raise "This version is already tagged!" if git_tag_exists(tag: "v.#{version_number}")
   puts "New git tag is v.#{version_number}"
 
-	github_release = set_github_release(
-	  repository_name: ENV["GITHUB_REPO_NAME"],
-	  api_token: #{ENV["GITHUB_TOKEN"]},
-	  name: "Version #{version_number}",
-	  tag_name: "v.#{version_number}",
-	  description: (File.read("changelog.txt") rescue "No changelog provided"),
-	  commitish: "master"
-	)
+  github_release = set_github_release(
+    repository_name: ENV["GITHUB_REPO_NAME"],
+    api_token: #{ENV["GITHUB_TOKEN"]},
+    name: "Version #{version_number}",
+    tag_name: "v.#{version_number}",
+    description: (File.read("changelog.txt") rescue "No changelog provided"),
+    commitish: "master"
+  )
 end
 
 
