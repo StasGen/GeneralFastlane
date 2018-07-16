@@ -113,7 +113,7 @@ private_lane :execute_create_tag do
   puts "New git tag is v.#{version_number}"
 
   github_release = set_github_release(
-    repository_name: ENV["GITHUB_REPO_NAME"],
+    repository_name: ENV["GITHUB_REPOSITORY_NAME"],
     api_token: ENV["GITHUB_TOKEN"],
     name: "Version #{version_number}",
     tag_name: "v.#{version_number}",
