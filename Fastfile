@@ -104,7 +104,8 @@ end
 
 desc "Create a new release on GitHub from master branch, add tag from project version and upload changelog for it"
 private_lane :execute_create_tag do
-  ensure_git_branch(branch: "master")
+  git_checkout "master"
+#   ensure_git_branch(branch: "master")
   version_number = get_version_number_from_plist(scheme: ENV["APPSTROE_SCHEME"])
   puts "Last git tag is #{last_git_tag}"
   raise "This version is already tagged!" if git_tag_exists(tag: "v.#{version_number}")
