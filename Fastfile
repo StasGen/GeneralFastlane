@@ -1,9 +1,7 @@
 #!/usr/bin/ruby
 
-fastlane_version "2.59.0"
+fastlane_version "2.99.1"
 default_platform :ios
-
-
 
 #####################################################
 # Public lanes
@@ -24,7 +22,7 @@ end
 
 desc "Run unit tests"
 private_lane :execute_test do
-  git_reset_changes
+  reset_git_repo
   clear_derived_data
   update_pods
   scan
@@ -52,23 +50,34 @@ end
 
 desc "Submit a new AdHoc Build to Apple TestFlight from RC branch"
 private_lane :execute_release_appstore do |options|
+  slack_train_start(distance: 5, train: "🚀", reverse_direction: true, rail: "✨")
+  
   ensure_git_status_clean
-  branch = "rc"
-  post_to_slack(progress:"[:rocket::sparkles::sparkles::sparkles::sparkles:]", message: "Checking out #{branch}")
-  git_checkout branch
-  post_to_slack(progress:"[:sparkles::rocket::sparkles::sparkles::sparkles:]", message: "Installing Cocoapods")
+  slack_train
+  
+  git_checkout "rc"
+  slack_train
+  
   update_pods
+  slack_train
+  
   fullfill_plists_with_configs
-
-  post_to_slack(progress:"[:sparkles::sparkles::rocket::sparkles::sparkles:]", message: "Building application")
+  slack_train
+  
   build_appstore_release
-  post_to_slack(progress:"[:sparkles::sparkles::sparkles::rocket::sparkles:]", message: "Uploading to TestFlight")
+  slack_train
+  
   testflight
+  slack_train
+  
   refresh_dsyms(version:get_version_number_from_plist(scheme: ENV["APPSTROE_SCHEME"]))
-
+  slack_train
+  
   clean_build_artifacts
-  git_reset_changes
-  post_to_slack(progress:"[:sparkles::sparkles::sparkles::sparkles::rocket:]", message: "Build is processed and ready to be tested #{get_version}")
+  reset_git_repo
+  slack_train
+  
+  post_to_slack(message: "Build is processed and ready to be tested #{get_version}")
 end
 
 
@@ -167,21 +176,15 @@ def post_to_slack(options)
   )
 end
 
-
-def git_fetch
-  sh "git fetch"
-end
-
-
 def git_checkout(branch)
-  sh "git checkout #{branch}"
+  command = [
+    'git',
+    'checkout',
+    branch
+  ]
+  Actions.sh(command.join(' '))
+  UI.important "Successfully checkout branch #{remote_branch}."
 end
-
-
-def git_reset_changes
-  sh "git reset --hard HEAD"
-end
-
 
 #####################################################
 # Crashlytics Beta deploy
@@ -224,7 +227,7 @@ def build_crashlytics(branch, env, build_number)
   
   crashlytics_upload(notes)
   clean_build_artifacts
-  git_reset_changes
+  reset_git_repo
   post_to_slack(message: message)
 end
 
@@ -272,12 +275,14 @@ end
 
 def build_appstore_release
   set_appstore_provisioning_profiles
+
   version_number = get_version_number_from_plist(scheme: ENV["APPSTROE_SCHEME"])
   version_current = latest_testflight_build_number(version: version_number).to_i + 1
-  version_live_raw = latest_testflight_build_number(live: true)
-  version_live_raw ||= "1"
+  version_live_raw = latest_live_version_build_number_if_exists
+
   version_live = version_live_raw.to_i + 1
   version = version_live > version_current ? version_live : version_current
+  
   increment_build_number_in_plist(
     build_number: version.to_s,
     target: ENV["MAIN_TARGET"]
@@ -288,7 +293,6 @@ def build_appstore_release
     configuration: "ReleaseAppStore"
   )
 end
-
 
 def set_appstore_provisioning_profiles
   update_app_identifier(
@@ -301,6 +305,14 @@ def set_appstore_provisioning_profiles
   )
 end
 
+def latest_live_version_build_number_if_exists
+	Spaceship::Tunes.login(CredentialsManager::AppfileConfig.try_fetch_value(:apple_id))
+	app = Spaceship::Tunes::Application.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
+  	latest_version = app.live_version || app.latest_version
+  	version = latest_version.version
+  	build_number = latest_version.build_version ||= "1"
+  	return build_number
+end
 
 #####################################################
 # Error exception
@@ -308,18 +320,15 @@ end
 
 error do |lane, exception|
   clean_build_artifacts
-  git_reset_changes
-  puts "Fail? with '#{lane}'  Exception #{exception} "
-  if lane == :stage_crashlytics
-    failure_message = last_slack_progress.gsub(":train:", ":boom:")
-    post_to_slack(message: "#{failure_message} Ambushed! #{exception}", success: false)
+  reset_git_repo
+  UI.important "Fail? with '#{lane}' Exception #{exception} "
+  if lane == :execute_release_appstore
+    slack_train_crash
   end
-  if lane == :prod_crashlytics
-    failure_message = last_slack_progress.gsub(":aerial_tramway:", ":boom:")
-    post_to_slack(message: "#{failure_message} Ambushed! #{exception}", success: false)
+  if lane == :execute_stage
+    post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
   end
-  if lane == :prod_testflight
-    failure_message = last_slack_progress.gsub(":rocket:", ":boom:")
-    post_to_slack(message: "#{failure_message} Ambushed! #{exception}", success: false)
+  if lane == :execute_prod
+    post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
   end
 end
