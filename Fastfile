@@ -102,6 +102,28 @@ private_lane :execute_enable_firebase_debug_mode do
 end
 
 
+desc "Create a new release on GitHub from master branch, add tag from project version and upload changelog for it"
+private_lane :execute_create_tag do
+  ensure_git_status_clean
+  git_checkout("master")
+  git_pull
+  
+  version_number = get_version_number_from_plist(scheme: ENV["APPSTROE_SCHEME"])
+  puts "Last git tag is #{last_git_tag}"
+  raise "This version is already tagged!" if git_tag_exists(tag: "v.#{version_number}")
+  puts "New git tag is v.#{version_number}"
+
+  github_release = set_github_release(
+    repository_name: ENV["GITHUB_REPOSITORY_NAME"],
+    api_token: ENV["GITHUB_TOKEN"],
+    name: "Version #{version_number}",
+    tag_name: "v.#{version_number}",
+    description: (File.read("changelog.txt") rescue "No changelog provided"),
+    commitish: "master"
+  )
+end
+
+
 #####################################################
 # Helpers
 #####################################################
