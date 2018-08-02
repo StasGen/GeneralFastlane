@@ -386,17 +386,17 @@ end
 # Error exception
 #####################################################
 
-error do |lane, exception|
-  clean_build_artifacts
-  reset_git_repo
-  UI.important "Fail? with '#{lane}' Exception #{exception} "
-  if lane == :execute_release_appstore
-    slack_train_crash
-  end
-  if lane == :execute_stage
-    post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
-  end
-  if lane == :execute_prod
-    post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
-  end
-end
+# error do |lane, exception|
+#   clean_build_artifacts
+#   reset_git_repo
+#   UI.important "Fail? with '#{lane}' Exception #{exception} "
+#   if lane == :execute_release_appstore
+#     slack_train_crash
+#   end
+#   if lane == :execute_stage
+#     post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
+#   end
+#   if lane == :execute_prod
+#     post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
+#   end
+# end
