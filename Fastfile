@@ -1,9 +1,13 @@
 #!/usr/bin/ruby
 
-fastlane_version "2.59.0"
+require 'spaceship'
+fastlane_require 'fastlane-plugin-update_provisioning_profile_specifier'
+fastlane_require 'fastlane-plugin-versioning'
+fastlane_require 'fastlane-plugin-badge'
+fastlane_require 'fastlane-plugin-slack_train'
+
+fastlane_version "2.99.1"
 default_platform :ios
-
-
 
 #####################################################
 # Public lanes
@@ -24,7 +28,7 @@ end
 
 desc "Run unit tests"
 private_lane :execute_test do
-  git_reset_changes
+  ensure_git_status_clean
   clear_derived_data
   update_pods
   scan
@@ -52,23 +56,31 @@ end
 
 desc "Submit a new AdHoc Build to Apple TestFlight from RC branch"
 private_lane :execute_release_appstore do |options|
+  slack_train_start(distance: 7, train: "🚀", reverse_direction: true, rail: "✨")
+
   ensure_git_status_clean
-  branch = "rc"
-  post_to_slack(progress:"[:rocket::sparkles::sparkles::sparkles::sparkles:]", message: "Checking out #{branch}")
-  git_checkout branch
-  post_to_slack(progress:"[:sparkles::rocket::sparkles::sparkles::sparkles:]", message: "Installing Cocoapods")
+  slack_train
+  
   update_pods
+  slack_train
+  
   fullfill_plists_with_configs
-
-  post_to_slack(progress:"[:sparkles::sparkles::rocket::sparkles::sparkles:]", message: "Building application")
+  slack_train
+  
   build_appstore_release
-  post_to_slack(progress:"[:sparkles::sparkles::sparkles::rocket::sparkles:]", message: "Uploading to TestFlight")
+  slack_train
+  
   testflight
-  refresh_dsyms(version:get_version_number_from_plist(scheme: ENV["APPSTROE_SCHEME"]))
-
+  slack_train
+  
+  refresh_dsyms(version:get_version_number_from_plist(scheme: ENV["APPSTORE_SCHEME"]))
+  slack_train
+  
   clean_build_artifacts
-  git_reset_changes
-  post_to_slack(progress:"[:sparkles::sparkles::sparkles::sparkles::rocket:]", message: "Build is processed and ready to be tested #{get_version}")
+  reset_git_repo
+  slack_train
+  
+  post_to_slack(message: "Build is processed and ready to be tested #{get_version}")
 end
 
 
@@ -99,6 +111,94 @@ private_lane :execute_enable_firebase_debug_mode do
     sheme.launch_action.command_line_arguments = Xcodeproj::XCScheme::CommandLineArguments.new([{ :argument => '-FIRAnalyticsDebugEnabled', :enabled => true }])
     sheme.save!
   end
+end
+
+
+desc "Create a new release on GitHub from master branch, add tag from project version and upload changelog for it"
+private_lane :execute_create_tag do
+  ensure_git_status_clean
+  git_checkout("master")
+  git_pull
+  
+  version_number = get_version_number_from_plist(scheme: ENV["APPSTORE_SCHEME"])
+  puts "Last git tag is #{last_git_tag}"
+  raise "This version is already tagged!" if git_tag_exists(tag: "v.#{version_number}")
+  puts "New git tag is v.#{version_number}"
+
+  github_release = set_github_release(
+    repository_name: ENV["GITHUB_REPOSITORY_NAME"],
+    api_token: ENV["GITHUB_TOKEN"],
+    name: "Version #{version_number}",
+    tag_name: "v.#{version_number}",
+    description: (File.read("changelog.txt") rescue "No changelog provided"),
+    commitish: "master"
+  )
+end
+
+fastlane_require 'json'
+
+desc "Generate analytics"
+private_lane :generate_analytics do
+  file = File.read(ENV["ANALYTICS_INPUT"])
+  json = JSON.parse(file)
+
+  def append(content)
+  	open(ENV["ANALYTICS_OUTPUT"], 'a') { |output| output << content }  
+  end
+
+  def newLine
+	append("\n")
+  end
+
+  def appendNewLine(content)
+	append(content)
+	newLine
+  end
+
+  def shouldGeneratePassedParameters(params)
+	params.any? { |param| param["value"] == "null" }
+  end
+
+  open(ENV["ANALYTICS_OUTPUT"], 'w') { |output| output.puts 'import Foundation' }  
+  indentation = '    '
+  newLine
+  appendNewLine('struct Event {')
+  appendNewLine(indentation + 'let name: String')
+  appendNewLine(indentation + 'let parameters: [String: Any]')
+  appendNewLine('}')
+  newLine
+  appendNewLine('struct A {')
+  json.each do |category|
+    appendNewLine(indentation + 'struct ' + category['name'] + ' {')
+    category['events'].each do |event| 
+      	indentation = '        '
+      	all = event['parameters'].map { |v| { v["name"]=>v["value"] } }.reduce(:merge)
+      if shouldGeneratePassedParameters(event['parameters'])
+      	predefinedParams = all.select { |_, v| v != "null" }
+      	injectedParams = all.select { |_, v| v == "null" }
+      	injectedParamsNames = injectedParams.map { |k, _| k }
+      	params = injectedParamsNames.map { |v| '_ ' + v.to_s }.join(": String, ") + ": String"
+      	append(indentation + 'static let ')
+      	append(event['name'].split('_').collect(&:capitalize).join.tap { |e| e[0] = e[0].downcase } + ': (' + params)
+      	append(') -> Event = { ' + injectedParamsNames.join(", "))
+      	append(' in Event(name: "' + event['name'] + '", parameters: [')
+      	append(injectedParamsNames.map { |v| '"' + v.to_s + '": ' + v.to_s }.join(", "))
+      	append(', ' + predefinedParams.to_json.sub(':"', ': "').sub('{', '').sub('}', '')) if predefinedParams.any?
+      	append(', "' + category['name'] + '": "' + category['name'] + '"')
+      	appendNewLine(']) }')
+      else
+        append(indentation + 'static let ')
+        append(event['name'].split('_').collect(&:capitalize).join.tap { |e| e[0] = e[0].downcase } + ' = Event(name: "')
+        append(event['name'] + '", parameters: [')
+        append(all.to_json.sub(':"', ': "').sub('{', '').sub('}', ''))
+        append(', "' + category['name'] + '": "' + category['name'] + '"')
+        appendNewLine('])')
+      end  
+    end
+    indentation = '    '
+    appendNewLine(indentation + '}')
+  end
+  appendNewLine('}')
 end
 
 
@@ -139,27 +239,20 @@ def post_to_slack(options)
   last_slack_progress = progress
   slack(
     message: "#{progress} #{options[:message]}",
-    slack_url: ENV["SLACK_CHANNEL_URL"],
     success: options[:success],
     default_payloads: []
   )
 end
 
-
-def git_fetch
-  sh "git fetch"
-end
-
-
 def git_checkout(branch)
-  sh "git checkout #{branch}"
+  command = [
+    'git',
+    'checkout',
+    branch
+  ]
+  Actions.sh(command.join(' '))
+  UI.important "Successfully checkout branch #{branch}."
 end
-
-
-def git_reset_changes
-  sh "git reset --hard HEAD"
-end
-
 
 #####################################################
 # Crashlytics Beta deploy
@@ -202,7 +295,7 @@ def build_crashlytics(branch, env, build_number)
   
   crashlytics_upload(notes)
   clean_build_artifacts
-  git_reset_changes
+  reset_git_repo
   post_to_slack(message: message)
 end
 
@@ -250,23 +343,24 @@ end
 
 def build_appstore_release
   set_appstore_provisioning_profiles
-  version_number = get_version_number_from_plist(scheme: ENV["APPSTROE_SCHEME"])
+
+  version_number = get_version_number_from_plist(scheme: ENV["APPSTORE_SCHEME"])
   version_current = latest_testflight_build_number(version: version_number).to_i + 1
-  version_live_raw = latest_testflight_build_number(live: true)
-  version_live_raw ||= "1"
+  version_live_raw = latest_live_version_build_number_if_exists
+
   version_live = version_live_raw.to_i + 1
   version = version_live > version_current ? version_live : version_current
+  
   increment_build_number_in_plist(
     build_number: version.to_s,
     target: ENV["MAIN_TARGET"]
   )
   gym(
-    scheme: ENV["APPSTROE_SCHEME"],
+    scheme: ENV["APPSTORE_SCHEME"],
     export_method: "app-store",
     configuration: "ReleaseAppStore"
   )
 end
-
 
 def set_appstore_provisioning_profiles
   update_app_identifier(
@@ -279,6 +373,14 @@ def set_appstore_provisioning_profiles
   )
 end
 
+def latest_live_version_build_number_if_exists
+	Spaceship::Tunes.login(CredentialsManager::AppfileConfig.try_fetch_value(:apple_id))
+	app = Spaceship::Tunes::Application.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
+  	latest_version = app.live_version || app.latest_version
+  	version = latest_version.version
+  	build_number = latest_version.build_version ||= "1"
+  	return build_number
+end
 
 #####################################################
 # Error exception
@@ -286,18 +388,15 @@ end
 
 error do |lane, exception|
   clean_build_artifacts
-  git_reset_changes
-  puts "Fail? with '#{lane}'  Exception #{exception} "
-  if lane == :stage_crashlytics
-    failure_message = last_slack_progress.gsub(":train:", ":boom:")
-    post_to_slack(message: "#{failure_message} Ambushed! #{exception}", success: false)
+  reset_git_repo
+  UI.important "Fail? with '#{lane}' Exception #{exception} "
+  if lane == :execute_release_appstore
+    slack_train_crash
   end
-  if lane == :prod_crashlytics
-    failure_message = last_slack_progress.gsub(":aerial_tramway:", ":boom:")
-    post_to_slack(message: "#{failure_message} Ambushed! #{exception}", success: false)
+  if lane == :execute_stage
+    post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
   end
-  if lane == :prod_testflight
-    failure_message = last_slack_progress.gsub(":rocket:", ":boom:")
-    post_to_slack(message: "#{failure_message} Ambushed! #{exception}", success: false)
+  if lane == :execute_prod
+    post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
   end
 end
