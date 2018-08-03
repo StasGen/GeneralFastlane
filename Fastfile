@@ -313,7 +313,7 @@ end
 
 def set_adhoc_provisioning_profiles
   project = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"])
-  profiles = eval(ENV["PROVISION_PROFILES_APPSTORE"])
+  profiles = eval(ENV["PROVISION_PROFILES_ADHOC"])
   project.targets.each do |target|
     unless profiles[target.name].nil?
       ["ReleaseStage", "ReleaseProd"].each do |config|
