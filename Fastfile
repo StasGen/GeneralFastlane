@@ -368,6 +368,11 @@ def build_appstore_release
 end
 
 def set_appstore_provisioning_profiles
+  update_app_identifier(
+    plist_path: ENV["PLIST_PATH"],
+    xcodeproj: ENV["XCODE_PROJ"]
+  )
+	
   project = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"])
   profiles = eval(ENV["PROVISION_PROFILES_APPSTORE"])
   project.targets.each do |target|
