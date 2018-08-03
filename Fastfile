@@ -346,7 +346,7 @@ end
 #####################################################
 
 def build_appstore_release
-  set_appstore_provisioning_profiles
+#   set_appstore_provisioning_profiles
 
   version_number = get_version_number_from_plist(scheme: ENV["APPSTORE_SCHEME"])
   version_current = latest_testflight_build_number(version: version_number).to_i + 1
