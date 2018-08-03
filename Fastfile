@@ -11,16 +11,6 @@ default_platform :ios
 
 
 #####################################################
-# Global const
-#####################################################
-
-APPSTORE_PROFILES = eval(ENV["PROVISION_PROFILES_APPSTORE"])
-ADHOC_PROFILES = eval(ENV["PROVISION_PROFILES_APPSTORE"])
-PROJECT = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"])
-CONFIG = Xcodeproj::Config.new(ENV["XCODE_COFIG_PATH"])
-
-
-#####################################################
 # Public lanes
 #####################################################
 
