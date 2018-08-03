@@ -346,7 +346,7 @@ end
 #####################################################
 
 def build_appstore_release
-#   set_appstore_provisioning_profiles
+  set_appstore_provisioning_profiles
 
   version_number = get_version_number_from_plist(scheme: ENV["APPSTORE_SCHEME"])
   version_current = latest_testflight_build_number(version: version_number).to_i + 1
@@ -379,8 +379,8 @@ def set_appstore_provisioning_profiles
     unless profiles[target.name].nil?
       update_provisioning_profile_specifier(
         target: target.name,
-        new_specifier: profiles[target.name]
-#         configuration: "ReleaseAppstore"
+        new_specifier: profiles[target.name],
+        configuration: "ReleaseAppstore"
       )
     end
   end
@@ -399,17 +399,17 @@ end
 # Error exception
 #####################################################
 
-# error do |lane, exception|
-#   clean_build_artifacts
-#   reset_git_repo
-#   UI.important "Fail? with '#{lane}' Exception #{exception} "
-#   if lane == :execute_release_appstore
-#     slack_train_crash
-#   end
-#   if lane == :execute_stage
-#     post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
-#   end
-#   if lane == :execute_prod
-#     post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
-#   end
-# end
+error do |lane, exception|
+  clean_build_artifacts
+  reset_git_repo
+  UI.important "Fail? with '#{lane}' Exception #{exception} "
+  if lane == :execute_release_appstore
+    slack_train_crash
+  end
+  if lane == :execute_stage
+    post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
+  end
+  if lane == :execute_prod
+    post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
+  end
+end
