@@ -9,6 +9,17 @@ fastlane_require 'fastlane-plugin-slack_train'
 fastlane_version "2.99.1"
 default_platform :ios
 
+
+#####################################################
+# Global const
+#####################################################
+
+APPSTORE_PROFILES = eval(ENV["PROVISION_PROFILES_APPSTORE"])
+ADHOC_PROFILES = eval(ENV["PROVISION_PROFILES_APPSTORE"])
+PROJECT = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"])
+CONFIG = Xcodeproj::Config.new(ENV["XCODE_COFIG_PATH"])
+
+
 #####################################################
 # Public lanes
 #####################################################
@@ -86,13 +97,10 @@ end
 
 desc "Checks if all configs settings exists in *.info plists"
 private_lane :execute_fullfill_plists_with_configs do
-  config = Xcodeproj::Config.new(ENV["XCODE_COFIG_PATH"])
-  project = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"])
-
-  project.targets.each do |target|
+  PROJECT.targets.each do |target|
     plist_path = "../#{target.build_configurations[0].build_settings["INFOPLIST_FILE"]}"
     plist = Xcodeproj::Plist.read_from_path(plist_path)
-    config.attributes.each do |key, value|
+    CONFIG.attributes.each do |key, value|
       plist[key] = "${#{key}}"
     end
     Xcodeproj::Plist.write_to_path(plist, plist_path)
@@ -147,16 +155,16 @@ private_lane :generate_analytics do
   end
 
   def newLine
-	append("\n")
+	 append("\n")
   end
 
   def appendNewLine(content)
-	append(content)
-	newLine
+	 append(content)
+	 newLine
   end
 
   def shouldGeneratePassedParameters(params)
-	params.any? { |param| param["value"] == "null" }
+	 params.any? { |param| param["value"] == "null" }
   end
 
   open(ENV["ANALYTICS_OUTPUT"], 'w') { |output| output.puts 'import Foundation' }  
@@ -312,15 +320,17 @@ end
 
 
 def set_adhoc_provisioning_profiles
-  update_app_identifier(
-    plist_path: ENV["PLIST_PATH"],
-    xcodeproj: ENV["XCODE_PROJ"]
-  )
-
-  update_provisioning_profile_specifier(
-    target: ENV["MAIN_TARGET"],
-    new_specifier: ENV["PROVISION_PROFILE_DISTRIBUTION"]
-  )
+  ADHOC_PROFILES.targets.each do |target|
+    unless profiles[target.name].nil?
+      ["ReleaseStage", "ReleaseProd"].each do |config|
+        update_provisioning_profile_specifier(
+          target: target.name,
+          new_specifier: profiles[target.name],
+          configuration: config
+        )
+      end
+    end
+  end
 end
 
 
@@ -355,6 +365,7 @@ def build_appstore_release
     build_number: version.to_s,
     target: ENV["MAIN_TARGET"]
   )
+
   gym(
     scheme: ENV["APPSTORE_SCHEME"],
     export_method: "app-store",
@@ -363,14 +374,15 @@ def build_appstore_release
 end
 
 def set_appstore_provisioning_profiles
-  update_app_identifier(
-    plist_path: ENV["PLIST_PATH"],
-    xcodeproj: ENV["XCODE_PROJ"]
-  )
-  update_provisioning_profile_specifier(
-    target: ENV["MAIN_TARGET"],
-    new_specifier: ENV["PROVISION_PROFILE_APPSTORE"]
-  )
+  APPSTORE_PROFILES.targets.each do |target|
+    unless profiles[target.name].nil?
+      update_provisioning_profile_specifier(
+        target: target.name,
+        new_specifier: profiles[target.name],
+        configuration: "ReleaseAppstore"
+      )
+    end
+  end
 end
 
 def latest_live_version_build_number_if_exists
@@ -386,17 +398,17 @@ end
 # Error exception
 #####################################################
 
-# error do |lane, exception|
-#   clean_build_artifacts
-#   reset_git_repo
-#   UI.important "Fail? with '#{lane}' Exception #{exception} "
-#   if lane == :execute_release_appstore
-#     slack_train_crash
-#   end
-#   if lane == :execute_stage
-#     post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
-#   end
-#   if lane == :execute_prod
-#     post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
-#   end
-# end
+error do |lane, exception|
+  clean_build_artifacts
+  reset_git_repo
+  UI.important "Fail? with '#{lane}' Exception #{exception} "
+  if lane == :execute_release_appstore
+    slack_train_crash
+  end
+  if lane == :execute_stage
+    post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
+  end
+  if lane == :execute_prod
+    post_to_slack(message: "Failed to deliver stage build #{exception}", success: false)
+  end
+end
