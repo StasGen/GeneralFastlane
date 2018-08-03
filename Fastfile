@@ -374,8 +374,8 @@ def set_appstore_provisioning_profiles
     unless profiles[target.name].nil?
       update_provisioning_profile_specifier(
         target: target.name,
-        new_specifier: profiles[target.name],
-        configuration: "ReleaseAppstore"
+        new_specifier: profiles[target.name]
+#         configuration: "ReleaseAppstore"
       )
     end
   end
