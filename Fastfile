@@ -274,7 +274,7 @@ def build_crashlytics(branch, env, build_number)
   when "stage"
     add_badge(shield: "stage-#{get_version}-orange", no_badge: true)
     gym(
-      scheme: "Stage",
+      scheme: ENV["STAGE_SCHEME"],
       export_method: "ad-hoc",
       configuration: "ReleaseStage"
     )
@@ -283,7 +283,7 @@ def build_crashlytics(branch, env, build_number)
   when "prod"
     add_badge(shield: "prod-#{get_version}-orange", no_badge: true)
     gym(
-      scheme: "Prod",
+      scheme: ENV["PROD_SCHEME"],
       export_method: "ad-hoc",
       configuration: "ReleaseProd"
     )
