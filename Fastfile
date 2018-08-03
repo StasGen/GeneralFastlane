@@ -87,9 +87,8 @@ end
 
 desc "Checks if all configs settings exists in *.info plists"
 private_lane :execute_fullfill_plists_with_configs do
-  path = ENV["XCODE_PROJ_PATH"].to_s
-  progect = Xcodeproj::Project.open(path)
-  progect.targets.each do |target|
+  project = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"])
+  project.targets.each do |target|
     plist_path = "../#{target.build_configurations[0].build_settings["INFOPLIST_FILE"]}"
     plist = Xcodeproj::Plist.read_from_path(plist_path)
     config = Xcodeproj::Config.new(ENV["XCODE_COFIG_PATH"])
@@ -313,8 +312,9 @@ end
 
 
 def set_adhoc_provisioning_profiles
+  project = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"])
   profiles = eval(ENV["PROVISION_PROFILES_APPSTORE"])
-  profiles.targets.each do |target|
+  project.targets.each do |target|
     unless profiles[target.name].nil?
       ["ReleaseStage", "ReleaseProd"].each do |config|
         update_provisioning_profile_specifier(
@@ -368,8 +368,9 @@ def build_appstore_release
 end
 
 def set_appstore_provisioning_profiles
+  project = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"])
   profiles = eval(ENV["PROVISION_PROFILES_APPSTORE"])
-  profiles.targets.each do |target|
+  project.targets.each do |target|
     unless profiles[target.name].nil?
       update_provisioning_profile_specifier(
         target: target.name,
