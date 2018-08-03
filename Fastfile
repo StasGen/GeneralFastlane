@@ -87,7 +87,7 @@ end
 
 desc "Checks if all configs settings exists in *.info plists"
 private_lane :execute_fullfill_plists_with_configs do
-  progect = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"])
+  progect = Xcodeproj::Project.open(ENV["XCODE_PROJ_PATH"].to_s)
   progect.targets.each do |target|
     plist_path = "../#{target.build_configurations[0].build_settings["INFOPLIST_FILE"]}"
     plist = Xcodeproj::Plist.read_from_path(plist_path)
