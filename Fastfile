@@ -363,7 +363,7 @@ def build_appstore_release
   gym(
     scheme: ENV["APPSTORE_SCHEME"],
     export_method: "app-store",
-    configuration: "ReleaseAppStore"
+    configuration: "ReleaseAppstore"
   )
 end
 
