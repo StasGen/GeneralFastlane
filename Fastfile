@@ -380,7 +380,7 @@ def set_appstore_provisioning_profiles
       update_provisioning_profile_specifier(
         target: target.name,
         new_specifier: profiles[target.name],
-        configuration: "ReleaseAppStore"
+        configuration: "ReleaseAppstore"
       )
     end
   end
