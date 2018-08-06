@@ -29,7 +29,7 @@ desc "and automatically install the existing profiles from the Git repo in ~/Lib
 lane :generate_certificate do
   profile_types = ["appstore", "development", "adhoc"]
   profile_types.each { |profile_type| 
-    match(type: profile_type, readonly: true)
+    match(type: profile_type)
   }
 end
 
