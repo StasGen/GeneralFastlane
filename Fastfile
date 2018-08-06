@@ -1,6 +1,7 @@
 #!/usr/bin/ruby
 
 require 'spaceship'
+fastlane_require 'json'
 fastlane_require 'fastlane-plugin-update_provisioning_profile_specifier'
 fastlane_require 'fastlane-plugin-versioning'
 fastlane_require 'fastlane-plugin-badge'
@@ -20,6 +21,16 @@ lane :refresh_dsyms do |options|
   download_dsyms(version: options[:version] || "latest")
   upload_symbols_to_crashlytics
   clean_build_artifacts
+end
+
+
+desc "Creates all required certificates & provisioning profiles and stores them in a separate git repository"
+desc "and automatically install the existing profiles from the Git repo in ~/Library/MobileDevice/Provisioning Profiles"
+lane :generate_certificate do
+  profile_types = ["appstore", "development", "adhoc"]
+  profile_types.each { |profile_type| 
+    match(type: profile_type)
+  }
 end
 
 
@@ -135,7 +146,6 @@ private_lane :execute_create_tag do
   )
 end
 
-fastlane_require 'json'
 
 desc "Generate analytics"
 private_lane :generate_analytics do
@@ -266,7 +276,8 @@ def build_crashlytics(branch, env, build_number)
   update_pods
   fullfill_plists_with_configs
   enable_firebase_debug_mode
-  set_adhoc_provisioning_profiles
+  match(type: "adhoc")
+#   set_adhoc_provisioning_profiles
   commit_hash = last_git_commit[:abbreviated_commit_hash]
   message = nil
   
@@ -346,7 +357,8 @@ end
 #####################################################
 
 def build_appstore_release
-  set_appstore_provisioning_profiles
+  match(type: "appstore")
+#   set_appstore_provisioning_profiles
 
   version_number = get_version_number_from_plist(scheme: ENV["APPSTORE_SCHEME"])
   version_current = latest_testflight_build_number(version: version_number).to_i + 1
