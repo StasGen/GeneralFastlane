@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-require 'spaceship'
+fastlane_require 'spaceship'
 fastlane_require 'json'
 fastlane_require 'fastlane-plugin-update_provisioning_profile_specifier'
 fastlane_require 'fastlane-plugin-versioning'
